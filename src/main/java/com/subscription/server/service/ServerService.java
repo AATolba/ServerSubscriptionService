@@ -7,6 +7,7 @@ import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
 import jdk.nashorn.internal.runtime.Context;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,7 +15,9 @@ import java.util.ArrayList;
 @Service
 public class ServerService {
 
+    @Autowired
     ServerRepository serverRepository;
+    @Autowired
     ModelMapper modelMapper;
     public static final int CAPACITY = 100;
     static ArrayList<Integer> runningOperations  = new ArrayList<>();

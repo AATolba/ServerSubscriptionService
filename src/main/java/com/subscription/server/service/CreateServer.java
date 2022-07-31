@@ -7,13 +7,16 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Getter
 @Setter
 @AllArgsConstructor
 public class CreateServer implements Runnable{
     public int capacity;
+    @Autowired
     ServerRepository serverRepository;
+    @Autowired
     ModelMapper modelMapper;
 
     public void run() {

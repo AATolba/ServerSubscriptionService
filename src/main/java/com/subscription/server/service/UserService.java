@@ -7,6 +7,7 @@ import com.subscription.server.model.UserDAO;
 import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,8 +15,10 @@ import java.util.Optional;
 
 @Service
 public class UserService {
+    @Autowired
     UserRepository userRepository;
-    ModelMapper modelMapper = new ModelMapper();
+    @Autowired
+    ModelMapper modelMapper;
 
     public UserDTO getUser(int id)
     {

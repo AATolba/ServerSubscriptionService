@@ -6,15 +6,20 @@ import com.subscription.server.DTO.UserDTO;
 import com.subscription.server.service.ServerService;
 import com.subscription.server.service.UserService;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
 
 @RestController
 @RequestMapping("users")
 public class UserController {
 
+    @Autowired
     UserService userService;
+    @Autowired
     ServerService  serverService ;
     @GetMapping("/{id}")
     public ResponseEntity getCustomer(@PathVariable int id)
@@ -38,7 +43,7 @@ public class UserController {
         }
         catch (Exception e)
         {
-            System.out.println(e.getStackTrace());
+            System.out.println(Arrays.toString(e.getStackTrace()));
             return new ResponseEntity("operation failed ",HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
