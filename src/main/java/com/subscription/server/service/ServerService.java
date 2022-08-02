@@ -7,7 +7,7 @@ import com.subscription.server.model.UserDAO;
 import com.subscription.server.modelMapper.ModelMapper;
 import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
-import com.subscription.server.vaildation.Valid;
+import com.subscription.server.vaildation.ValidMessage;
 import jdk.nashorn.internal.runtime.Context;
 import lombok.Synchronized;
 import org.slf4j.Logger;
@@ -37,7 +37,7 @@ public class ServerService {
     public static volatile int creatingServers ;
     public static volatile int currentId ;
     Error error = new Error();
-    Valid valid = new Valid();
+    ValidMessage valid = new ValidMessage();
     Logger logger = LoggerFactory.getLogger(ServerService.class);
     private ArrayList<ServerDTO> getAllServers()
     {

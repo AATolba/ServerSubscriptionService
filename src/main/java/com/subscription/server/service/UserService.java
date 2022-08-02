@@ -8,7 +8,8 @@ import com.subscription.server.model.UserDAO;
 import com.subscription.server.modelMapper.ModelMapper;
 import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
-import com.subscription.server.vaildation.Valid;
+import com.subscription.server.vaildation.ValidMessage;
+import com.subscription.server.vaildation.Validation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,8 @@ import org.springframework.stereotype.Service;
 public class UserService {
     @Autowired
     UserRepository userRepository;
-    Valid valid = new Valid();
+    ValidMessage valid = new ValidMessage();
+    Validation validation = new Validation();
     Logger logger = LoggerFactory.getLogger(UserService.class);
 
     Error error = new Error();
@@ -44,18 +46,10 @@ public class UserService {
     {
 
         UserDAO newUser = modelMapper.userDTO2DAO(user);
-        if(user==null){
-            return new ResponseEntity<>(error.NullUser(),HttpStatus.BAD_REQUEST);
+        if(validation.validateUser(user).getStatusCode()!=HttpStatus.OK)
+        {
+            return validation.validateUser(user);
         }
-        if(newUser.getName().length()<3){
-                return new ResponseEntity(error.invalidName(),HttpStatus.BAD_REQUEST);
-            }
-        if(newUser.getId()<0){
-                return new ResponseEntity<>(error.invalidId(),HttpStatus.BAD_REQUEST);
-            }
-        if(!(newUser.getEmail().contains("@")||newUser.getEmail().contains("."))){
-                return new ResponseEntity<>(error.invalidEmail(),HttpStatus.BAD_REQUEST);
-            }
         try
         {
             userRepository.save(newUser);

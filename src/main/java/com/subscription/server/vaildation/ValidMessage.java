@@ -1,6 +1,6 @@
 package com.subscription.server.vaildation;
 
-public class Valid {
+public class ValidMessage {
     public String addSuccess(){
         return "added successfully";
     }
