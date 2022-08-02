@@ -8,6 +8,7 @@ import com.subscription.server.model.UserDAO;
 import com.subscription.server.modelMapper.ModelMapper;
 import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
+import com.subscription.server.vaildation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
     @Autowired
     UserRepository userRepository;
+    Valid valid = new Valid();
     Logger logger = LoggerFactory.getLogger(UserService.class);
 
     Error error = new Error();
@@ -76,7 +78,7 @@ public class UserService {
         try
         {
             userRepository.deleteById(id);
-            return new ResponseEntity<>("user deleted successfully",HttpStatus.OK);
+            return new ResponseEntity<>(valid.deleteSuccess(),HttpStatus.OK);
         }
         catch (Exception e)
         {

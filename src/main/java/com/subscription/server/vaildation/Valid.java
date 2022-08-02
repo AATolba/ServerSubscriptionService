@@ -1,4 +1,4 @@
-package com.subscription.server.Error;
+package com.subscription.server.vaildation;
 
 public class Valid {
     public String addSuccess(){
