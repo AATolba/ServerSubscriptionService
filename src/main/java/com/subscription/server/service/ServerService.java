@@ -69,18 +69,6 @@ public class ServerService {
 
     }
 
-    private ServerDTO getServer(int serverId)
-    {
-        try
-        {
-            return modelMapper.serverDAO2DTO(Objects.requireNonNull(serverRepository.findById(serverId).orElse(null)));
-        }
-        catch (Exception e)
-        {
-
-            throw new RuntimeException(e);
-        }
-    }
     private boolean checkForCreatingServers(int requestedCapacity)
     {
         if(runningOperations.size()>0)
