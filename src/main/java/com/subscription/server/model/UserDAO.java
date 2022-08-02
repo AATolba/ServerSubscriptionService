@@ -16,5 +16,6 @@ public class UserDAO {
     @Id
     int id ;
     String name;
+
     String email;
 }

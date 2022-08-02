@@ -1,48 +1,81 @@
 package com.subscription.server.service;
 import com.subscription.server.DTO.ServerDTO;
 import com.subscription.server.DTO.UserDTO;
+import com.subscription.server.Error.Error;
 import com.subscription.server.model.ServerDAO;
 import com.subscription.server.model.UserDAO;
+import com.subscription.server.modelMapper.ModelMapper;
 import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
 import jdk.nashorn.internal.runtime.Context;
-import org.modelmapper.ModelMapper;
+import lombok.Synchronized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.JtaTransactionAnnotationParser;
 
+import java.awt.image.RescaleOp;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.RecursiveTask;
+
 
 @Service
 public class ServerService {
 
     @Autowired
     ServerRepository serverRepository;
-    @Autowired
-    ModelMapper modelMapper;
+    ModelMapper modelMapper = new ModelMapper();
     public static final int CAPACITY = 100;
-    static ArrayList<Integer> runningOperations  = new ArrayList<>();
-    public static int creatingServers ;
-    public static int currentId;
+    static volatile ArrayList<Integer> runningOperations  = new ArrayList<>();
+    public static volatile int creatingServers ;
+    public static volatile int currentId ;
+    Error error = new Error();
+    Logger logger = LoggerFactory.getLogger(ServerService.class);
     private ArrayList<ServerDTO> getAllServers()
     {
         try
         {
             ArrayList<ServerDAO> serversDAO = (ArrayList<ServerDAO>) serverRepository.findAll();
-            return (ArrayList<ServerDTO>) serversDAO.stream().map(server -> modelMapper.map(server,ServerDTO.class));
+            if(serversDAO.size()==0){
+                return new ArrayList<ServerDTO>();
+            }
+            else
+            {
+               ArrayList<ServerDTO> serverDTOArrayList = new ArrayList<>();
+               for(ServerDAO server : serversDAO){
+                   serverDTOArrayList.add(modelMapper.serverDAO2DTO(server));
+               }
+               return serverDTOArrayList;
+            }
         }
         catch (Exception e)
         {
+            logger.error(e.getMessage());
             throw new RuntimeException(e);
         }
     }
+    public int getId(){
+
+        ArrayList<ServerDAO> servers = (ArrayList<ServerDAO>) serverRepository.findAll();
+        return servers.size()+1;
+
+    }
+
     private ServerDTO getServer(int serverId)
     {
         try
         {
-            return modelMapper.map(serverRepository.findById(serverId),ServerDTO.class);
+            return modelMapper.serverDAO2DTO(Objects.requireNonNull(serverRepository.findById(serverId).orElse(null)));
         }
         catch (Exception e)
         {
+
             throw new RuntimeException(e);
         }
     }
@@ -54,7 +87,7 @@ public class ServerService {
             if (CAPACITY * creatingServers - (requestedCapacity + sum) >= 0)
             {
                 int currentCount = creatingServers;
-                while (creatingServers == currentCount) ;
+                while (creatingServers == currentCount) {}
                 sum = (int) runningOperations.stream().mapToInt(x -> x).summaryStatistics().getSum();
                 if (CAPACITY * creatingServers - (requestedCapacity + sum) >= 0)
                 {
@@ -64,55 +97,92 @@ public class ServerService {
         }
         return false;
     }
+    @Synchronized
     private ServerDTO allocateServer(int requestedCapacity)
     {
-        ArrayList<ServerDTO> servers = getAllServers();
+        ArrayList<ServerDTO> servers = (ArrayList<ServerDTO>) getAllServers();
         for(ServerDTO server : servers)
         {
-            if(server.getRemainingCapacity()>=requestedCapacity)
+            if(server.getRemCapacity()>=requestedCapacity)
             {
-                server.setRemainingCapacity(server.getRemainingCapacity()-requestedCapacity);
-                serverRepository.save(modelMapper.map(server,ServerDAO.class));
+
+                server.setRemCapacity(server.getRemCapacity()-requestedCapacity);
+                serverRepository.save(modelMapper.serverDTO2DAO(server));
                 return server;
             }
         }
         return null;
     }
-    private ServerDTO saveServer(ServerDTO subscribedServer)
+    @Synchronized
+    private ResponseEntity saveServer(ServerDTO subscribedServer,int capacity)
     {
 
-        subscribedServer = new ServerDTO(ServerService.currentId,ServerService.CAPACITY,ServerService.CAPACITY,true);
-        ServerService.currentId+=1;
-        ServerDAO NewRepositoryServer= modelMapper.map(subscribedServer,ServerDAO.class);
+        currentId = getId();
+        if(subscribedServer!=null){
+            return new ResponseEntity(subscribedServer,HttpStatus.OK);
+        }
+        subscribedServer = new ServerDTO(ServerService.currentId,ServerService.CAPACITY-capacity,ServerService.CAPACITY);
+        ServerService.currentId++;
+        ServerDAO NewRepositoryServer= modelMapper.serverDTO2DAO(subscribedServer);
+//        ServerDAO NewRepositoryServer = new ServerDAO(1,100,100);
+        try{
         serverRepository.save(NewRepositoryServer);
-
-        return subscribedServer;
-    }
-
-    public ServerDTO subscribe(int id , int requestedCapacity)
-    {
-
-        ServerDTO subscribedServer =  allocateServer(requestedCapacity);
-        if(subscribedServer!= null)
-        {
-            return saveServer(subscribedServer);
+        }
+        catch (Exception e){
+            logger.error(e.getMessage());
+            return new ResponseEntity<>(error.InternalServerError(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        while (checkForCreatingServers(requestedCapacity));
+        return new ResponseEntity(subscribedServer, HttpStatus.OK);
+    }
+
+//    @Synchronized
+    public ResponseEntity subscribe(int id , int requestedCapacity)  {
+
+        if(requestedCapacity>100){
+            return new ResponseEntity(error.ServerCapacityError(),HttpStatus.BAD_REQUEST);
+        }
+        ServerDTO subscribedServer = allocateServer(requestedCapacity);
+
+        if (subscribedServer != null) {
+            return saveServer(subscribedServer,requestedCapacity);
+        }
+        while (checkForCreatingServers(requestedCapacity)) {
+        }
 
         subscribedServer = allocateServer(requestedCapacity);
-        if(subscribedServer!= null)
+        if (subscribedServer != null) {
+            return saveServer(subscribedServer, requestedCapacity);
+        }
+
+        try
         {
-            return saveServer(subscribedServer);
+            CreateServer createServer = new CreateServer(requestedCapacity, serverRepository, modelMapper);
+            Thread newServerThread = new Thread(createServer);
+            newServerThread.start();
+            newServerThread.join();
+        }
+        catch (Exception e )
+        {
+            logger.error(e.getMessage());
+            new ResponseEntity<>(error.InternalServerError(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
 
-        CreateServer createServer = new CreateServer(requestedCapacity,serverRepository,modelMapper);
-        Thread newServerThread = new Thread(createServer);
-        newServerThread.start();
-
-        return saveServer(subscribedServer);
+        return saveServer(subscribedServer, requestedCapacity);
     }
-
+    public ResponseEntity deleteAll(){
+        try {
+            serverRepository.deleteAll();
+            return new ResponseEntity("Deleted Successfully ",HttpStatus.OK);
+        }
+        catch (Exception e ){
+            logger.error(e.getMessage());
+            return new ResponseEntity<>(error.InternalServerError(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    public ArrayList<ServerDAO> getAll(){
+        return (ArrayList<ServerDAO>) serverRepository.findAll();
+    }
 
 }

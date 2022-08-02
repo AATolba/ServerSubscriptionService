@@ -10,11 +10,12 @@ import org.springframework.data.annotation.Id;
 @ToString
 @Document
 @Data
+@Builder
 public class ServerDTO {
     @Id
     int id;
-    int remainingCapacity;
+    int remCapacity;
     int fullCapacity;
-    boolean status;
+
 }
 

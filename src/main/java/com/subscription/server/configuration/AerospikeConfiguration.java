@@ -1,6 +1,7 @@
 package com.subscription.server.configuration;
 
 import com.aerospike.client.Host;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,10 @@ public class AerospikeConfiguration extends AbstractAerospikeDataConfiguration {
     @Bean
     public AerospikeDataSettings aerospikeDataSettings() {
         return AerospikeDataSettings.builder().scansEnabled(true).build();
+    }
+    @Bean
+    public ModelMapper ModelMapperObject() {
+        return new ModelMapper();
     }
 
     @Override
