@@ -2,6 +2,7 @@ package com.subscription.server.service;
 import com.subscription.server.DTO.ServerDTO;
 import com.subscription.server.DTO.UserDTO;
 import com.subscription.server.Error.Error;
+import com.subscription.server.Error.LoggingMessages;
 import com.subscription.server.model.ServerDAO;
 import com.subscription.server.modelMapper.ModelMapper;
 import com.subscription.server.repository.ServerRepository;
@@ -38,6 +39,7 @@ public class ServerService {
     Error error = new Error();
     ValidMessage valid = new ValidMessage();
     Logger logger = LoggerFactory.getLogger(ServerService.class);
+    LoggingMessages loggingMessages = new LoggingMessages();
     private ArrayList<ServerDTO> getAllServers()
     {
         try
@@ -52,6 +54,7 @@ public class ServerService {
                for(ServerDAO server : serversDAO){
                    serverDTOArrayList.add(modelMapper.serverDAO2DTO(server));
                }
+               logger.info(loggingMessages.retunedAllUsers());
                return serverDTOArrayList;
             }
         }
@@ -77,6 +80,7 @@ public class ServerService {
             {
                 int currentCount = creatingServers;
                 while (creatingServers == currentCount) {
+                    logger.info(loggingMessages.checkingForCreatingServers());
 
                 }
                 sum = (int) runningOperations.stream().mapToInt(x -> x).summaryStatistics().getSum();
@@ -99,6 +103,8 @@ public class ServerService {
 
                 server.setRemCapacity(server.getRemCapacity()-requestedCapacity);
                 serverRepository.save(modelMapper.serverDTO2DAO(server));
+                logger.info(loggingMessages.allocatingServer());
+
                 return server;
             }
         }
@@ -117,7 +123,10 @@ public class ServerService {
         ServerDAO NewRepositoryServer= modelMapper.serverDTO2DAO(subscribedServer);
 //        ServerDAO NewRepositoryServer = new ServerDAO(1,100,100);
         try{
+
         serverRepository.save(NewRepositoryServer);
+        logger.info(loggingMessages.attemptingToSaveServer());
+
         }
         catch (Exception e){
             logger.error(e.getMessage());
@@ -167,6 +176,7 @@ public class ServerService {
             logger.error(e.getMessage());
             new ResponseEntity<>(error.InternalServerError(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        logger.info(loggingMessages.attemptingToSubscribeToServer());
 
 //        saveServer(null,requestedCapacity);
         return new ResponseEntity(error.WaitingForServer(),HttpStatus.OK);

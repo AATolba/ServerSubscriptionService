@@ -3,6 +3,7 @@ package com.subscription.server.service;
 import com.subscription.server.DTO.ServerDTO;
 import com.subscription.server.DTO.UserDTO;
 import com.subscription.server.Error.Error;
+import com.subscription.server.Error.LoggingMessages;
 import com.subscription.server.model.ServerDAO;
 import com.subscription.server.model.UserDAO;
 import com.subscription.server.modelMapper.ModelMapper;
@@ -25,7 +26,7 @@ public class UserService {
     ValidMessage valid = new ValidMessage();
     Validation validation = new Validation();
     Logger logger = LoggerFactory.getLogger(UserService.class);
-
+    LoggingMessages loggingMessages= new LoggingMessages();
     Error error = new Error();
     ModelMapper modelMapper = new ModelMapper();
     public ResponseEntity  getUser(int id)
@@ -33,6 +34,7 @@ public class UserService {
         try
         {
             UserDAO usr = userRepository.findById(id).orElse(null);
+            logger.info(loggingMessages.returnUser());
             return new ResponseEntity(modelMapper.userDAO2DTO(usr), HttpStatus.OK);
         }
         catch (Exception e)
@@ -52,6 +54,7 @@ public class UserService {
         }
         try
         {
+            logger.info(loggingMessages.addUser());
             userRepository.save(newUser);
             return new ResponseEntity(user,HttpStatus.ACCEPTED);
         }
@@ -72,6 +75,7 @@ public class UserService {
         try
         {
             userRepository.deleteById(id);
+            logger.info(loggingMessages.deleteUser());
             return new ResponseEntity<>(valid.deleteSuccess(),HttpStatus.OK);
         }
         catch (Exception e)
@@ -89,6 +93,7 @@ public class UserService {
         try
         {
             userRepository.save(toBeUpdatedUser);
+            logger.info(loggingMessages.updateUser());
             return new ResponseEntity<>(user,HttpStatus.OK);
         }
         catch (Exception e)
