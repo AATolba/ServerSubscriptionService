@@ -32,7 +32,7 @@ public class UserController {
         return userService.addUser(user);
     }
     @DeleteMapping("/")
-    public ResponseEntity deleteUser(@PathVariable UserDTO userDTO )
+    public ResponseEntity deleteUser(@RequestBody UserDTO userDTO )
     {
       return userService.deleteUser(userDTO.getId());
     }
@@ -53,9 +53,6 @@ public class UserController {
     public List<ServerDAO> getAll(){
         return serverService.getAll();
     }
-
-
-
 
 
 }
