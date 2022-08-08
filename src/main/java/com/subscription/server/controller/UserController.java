@@ -1,19 +1,18 @@
 package com.subscription.server.controller;
 
 
-import com.subscription.server.DTO.ServerDTO;
+import com.subscription.server.DTO.ServerRequest;
 import com.subscription.server.DTO.UserDTO;
 import com.subscription.server.model.ServerDAO;
 import com.subscription.server.service.ServerService;
 import com.subscription.server.service.UserService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("users")
@@ -33,25 +32,25 @@ public class UserController {
         return userService.addUser(user);
     }
     @DeleteMapping("/")
-    public ResponseEntity deleteUser(@PathVariable int id )
+    public ResponseEntity deleteUser(@PathVariable UserDTO userDTO )
     {
-      return userService.deleteUser(id);
+      return userService.deleteUser(userDTO.getId());
     }
     @PutMapping("/")
-    public ResponseEntity updateUser(UserDTO user)
+    public ResponseEntity updateUser(@RequestBody UserDTO user)
     {
        return userService.updateUser(user);
     }
-    @GetMapping("subscribe/{id}")
-    public ResponseEntity subscribeToServer(@PathVariable int id , @RequestBody() int capacity) {
-            return serverService.subscribe(id,capacity);
+    @PutMapping("subscribe/{id}")
+    public  ResponseEntity subscribeToServer(@PathVariable int id , @RequestBody ServerRequest serverRequest) {
+        return serverService.subscribe(id,serverRequest.getRequiredCapacity());
     }
-    @GetMapping("/delete")
+    @DeleteMapping("/delete")
     public void deleteAll(){
         serverService.deleteAll();
     }
     @GetMapping("/all")
-    public ArrayList<ServerDAO> getAll(){
+    public List<ServerDAO> getAll(){
         return serverService.getAll();
     }
 

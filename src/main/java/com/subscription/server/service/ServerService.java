@@ -3,27 +3,23 @@ import com.subscription.server.DTO.ServerDTO;
 import com.subscription.server.DTO.UserDTO;
 import com.subscription.server.Error.Error;
 import com.subscription.server.model.ServerDAO;
-import com.subscription.server.model.UserDAO;
 import com.subscription.server.modelMapper.ModelMapper;
 import com.subscription.server.repository.ServerRepository;
 import com.subscription.server.repository.UserRepository;
 import com.subscription.server.vaildation.ValidMessage;
-import jdk.nashorn.internal.runtime.Context;
 import lombok.Synchronized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.JtaTransactionAnnotationParser;
 
-import java.awt.image.RescaleOp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.CompletableFuture;
 
 
 @Service
@@ -31,7 +27,10 @@ public class ServerService {
 
     @Autowired
     ServerRepository serverRepository;
+    @Autowired
+    UserRepository userRepository;
     ModelMapper modelMapper = new ModelMapper();
+    boolean finished = false;
     public static final int CAPACITY = 100;
     static volatile ArrayList<Integer> runningOperations  = new ArrayList<>();
     public static volatile int creatingServers ;
@@ -69,7 +68,7 @@ public class ServerService {
 
     }
 
-    private boolean checkForCreatingServers(int requestedCapacity)
+    public boolean checkForCreatingServers(int requestedCapacity)
     {
         if(runningOperations.size()>0)
         {
@@ -77,7 +76,9 @@ public class ServerService {
             if (CAPACITY * creatingServers - (requestedCapacity + sum) >= 0)
             {
                 int currentCount = creatingServers;
-                while (creatingServers == currentCount) {}
+                while (creatingServers == currentCount) {
+
+                }
                 sum = (int) runningOperations.stream().mapToInt(x -> x).summaryStatistics().getSum();
                 if (CAPACITY * creatingServers - (requestedCapacity + sum) >= 0)
                 {
@@ -88,7 +89,7 @@ public class ServerService {
         return false;
     }
     @Synchronized
-    private ServerDTO allocateServer(int requestedCapacity)
+    public ServerDTO allocateServer(int requestedCapacity)
     {
         ArrayList<ServerDTO> servers = (ArrayList<ServerDTO>) getAllServers();
         for(ServerDTO server : servers)
@@ -104,7 +105,7 @@ public class ServerService {
         return null;
     }
     @Synchronized
-    private ResponseEntity saveServer(ServerDTO subscribedServer,int capacity)
+    public ResponseEntity saveServer(@Nullable  ServerDTO subscribedServer, int capacity)
     {
 
         currentId = getId();
@@ -126,31 +127,40 @@ public class ServerService {
         return new ResponseEntity(subscribedServer, HttpStatus.OK);
     }
 
-//    @Synchronized
-    public ResponseEntity subscribe(int id , int requestedCapacity)  {
+
+
+
+    public synchronized ResponseEntity subscribe(int id , int requestedCapacity)  {
 
         if(requestedCapacity>100){
-            return new ResponseEntity(error.ServerCapacityError(),HttpStatus.BAD_REQUEST);
+            return new ResponseEntity(error.ServerCapacityError(), HttpStatus.BAD_REQUEST);
+        }
+
+        if(userRepository.findById(id).orElse(null)==null){
+            return new ResponseEntity(error.UserDoesNOtExist(),HttpStatus.NOT_FOUND);
         }
         ServerDTO subscribedServer = allocateServer(requestedCapacity);
 
         if (subscribedServer != null) {
-            return saveServer(subscribedServer,requestedCapacity);
-        }
-        while (checkForCreatingServers(requestedCapacity)) {
+            return saveServer(subscribedServer, requestedCapacity);
         }
 
+
+        WaitingThread thread = new WaitingThread(this,requestedCapacity);
+        thread.start();
+//        while (checkForCreatingServers(requestedCapacity))
+//        {
+//        }
         subscribedServer = allocateServer(requestedCapacity);
         if (subscribedServer != null) {
-            return saveServer(subscribedServer, requestedCapacity);
+            saveServer(subscribedServer, requestedCapacity);
         }
 
         try
         {
-            CreateServer createServer = new CreateServer(requestedCapacity, serverRepository, modelMapper);
+            CreateServer createServer = new CreateServer(requestedCapacity, serverRepository, modelMapper,this , finished);
             Thread newServerThread = new Thread(createServer);
             newServerThread.start();
-            newServerThread.join();
         }
         catch (Exception e )
         {
@@ -158,8 +168,8 @@ public class ServerService {
             new ResponseEntity<>(error.InternalServerError(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-
-        return saveServer(subscribedServer, requestedCapacity);
+//        saveServer(null,requestedCapacity);
+        return new ResponseEntity(error.WaitingForServer(),HttpStatus.OK);
     }
     public ResponseEntity deleteAll(){
         try {
@@ -171,8 +181,18 @@ public class ServerService {
             return new ResponseEntity<>(error.InternalServerError(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    public ArrayList<ServerDAO> getAll(){
-        return (ArrayList<ServerDAO>) serverRepository.findAll();
+
+    public List<ServerDAO> getAll(){
+        List<ServerDAO> list = (ArrayList<ServerDAO>) serverRepository.findAll();
+         list.sort(ServerDAO::compareTo);
+         return list;
     }
 
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
+    }
 }

@@ -28,6 +28,12 @@ public class Error {
     public String ServerCapacityError(){
         return "You only can allocate up to 100 Gigs per request";
     }
+    public String UserDoesNOtExist(){
+        return "User does not exist";
+    }
+    public String WaitingForServer(){
+        return " The requested server will be ready in 20 seconds ";
+    }
 
 
 }
